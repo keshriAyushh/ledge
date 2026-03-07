@@ -3,6 +3,7 @@ package com.ayush.network.di
 import com.ayush.network.BuildConfig
 import com.ayush.network.data.repository.AuthRepositoryImpl
 import com.ayush.network.domain.repository.AuthRepository
+import com.ayush.network.domain.usecase.AuthEligibilityUseCase
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -36,4 +37,7 @@ object NetworkModule {
     fun provideAuthRepository(supabaseClient: SupabaseClient): AuthRepository {
         return AuthRepositoryImpl(supabaseClient)
     }
+
+    @Provides
+    fun providesAuthEligibilityUseCase(): AuthEligibilityUseCase = AuthEligibilityUseCase()
 }

@@ -47,6 +47,7 @@ dependencies {
     api(libs.androidx.compose.ui.graphics)
     api(libs.androidx.compose.ui.tooling.preview)
     api(libs.androidx.compose.material3)
+    api(libs.androidx.compose.material.icons.extended)
     api(libs.androidx.navigation.compose)
     api(libs.hilt.navigation.compose)
     api(libs.coil.compose)
