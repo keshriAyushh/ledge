@@ -1,4 +1,4 @@
-package com.ayush.auth.data
+package com.ayush.auth.util
 
 import android.app.Activity
 import androidx.credentials.CredentialManager

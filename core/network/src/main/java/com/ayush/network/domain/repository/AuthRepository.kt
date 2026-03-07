@@ -1,14 +1,14 @@
 package com.ayush.network.domain.repository
 
 import com.ayush.common.models.User
-import com.ayush.common.result.AuthResult
+import com.ayush.common.result.ApiResult
 
 interface AuthRepository {
 
-    suspend fun signInWithGoogleIdToken(idToken: String): AuthResult<User>
-    suspend fun signInWithEmail(email: String, password: String): AuthResult<User>
-    suspend fun signUpWithEmail(email: String, password: String): AuthResult<User>
+    suspend fun signInWithGoogleIdToken(idToken: String): ApiResult<User>
+    suspend fun signInWithEmail(email: String, password: String): ApiResult<User>
+    suspend fun signUpWithEmail(email: String, password: String): ApiResult<User>
     suspend fun getCurrentUser(): User?
-    suspend fun resetPasswordForEmail(email: String): AuthResult<Unit>
+    suspend fun resetPasswordForEmail(email: String): ApiResult<Unit>
     suspend fun signOut()
 }

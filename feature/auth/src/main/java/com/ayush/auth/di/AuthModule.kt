@@ -2,7 +2,8 @@ package com.ayush.auth.di
 
 import android.content.Context
 import androidx.credentials.CredentialManager
-import com.ayush.auth.data.GoogleIdTokenProvider
+import com.ayush.auth.util.GoogleIdTokenProvider
+import com.ayush.network.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -19,6 +20,13 @@ object AuthModule {
     @Singleton
     fun provideCredentialManager(@ApplicationContext context: Context): CredentialManager {
         return CredentialManager.create(context)
+    }
+
+    @Provides
+    @Singleton
+    @Named("google_web_client_id")
+    fun providesWebClientId(): String {
+        return BuildConfig.GOOGLE_WEB_CLIENT_ID
     }
 
     @Provides
