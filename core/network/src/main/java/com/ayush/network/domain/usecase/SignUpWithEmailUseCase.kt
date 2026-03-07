@@ -10,8 +10,13 @@ class SignUpWithEmailUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(
         email: String,
+        name: String,
         password: String
     ): ApiResult<User> {
-        return authRepository.signUpWithEmail(email, password)
+        return authRepository.signUpWithEmail(
+            email = email,
+            password = password,
+            name = name
+        )
     }
 }

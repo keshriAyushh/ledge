@@ -10,6 +10,8 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.providers.builtin.IDToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
@@ -40,12 +42,16 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun signUpWithEmail(
         email: String,
-        password: String
+        password: String,
+        name: String
     ): ApiResult<User> = withContext(Dispatchers.IO) {
         runCatching {
             supabaseClient.auth.signUpWith(Email, redirectUrl = REDIRECT_URL) {
                 this.email = email
                 this.password = password
+                this.data = buildJsonObject {
+                    put("full_name", name)
+                }
             }
             getCurrentUser()
         }.fold(
