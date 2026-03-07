@@ -16,6 +16,10 @@ class AuthRepositoryImpl @Inject constructor(
     private val supabaseClient: SupabaseClient
 ) : AuthRepository {
 
+    companion object {
+        private const val REDIRECT_URL = "com.ayush.ledge://login-callback"
+    }
+
     override suspend fun signInWithEmail(
         email: String,
         password: String
@@ -39,7 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
         password: String
     ): ApiResult<User> = withContext(Dispatchers.IO) {
         runCatching {
-            supabaseClient.auth.signUpWith(Email) {
+            supabaseClient.auth.signUpWith(Email, redirectUrl = REDIRECT_URL) {
                 this.email = email
                 this.password = password
             }
@@ -89,7 +93,7 @@ class AuthRepositoryImpl @Inject constructor(
 
     override suspend fun resetPasswordForEmail(email: String): ApiResult<Unit> = withContext(Dispatchers.IO) {
         runCatching {
-            supabaseClient.auth.resetPasswordForEmail(email)
+            supabaseClient.auth.resetPasswordForEmail(email, redirectUrl = REDIRECT_URL)
         }.fold(
             onSuccess = { ApiResult.Success(Unit) },
             onFailure = { ApiResult.Error(it.message ?: "Password reset failed", it) }

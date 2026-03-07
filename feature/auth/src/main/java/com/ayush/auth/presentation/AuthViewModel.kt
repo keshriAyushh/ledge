@@ -49,6 +49,29 @@ class AuthViewModel @Inject constructor(
                 viewModelScope.launch {
                     setState { copy(password = event.password) }
                     evaluateEligibility()
+                    validateSignUpFields()
+                }
+            }
+
+            is AuthUiEvent.FullNameChanged -> {
+                viewModelScope.launch {
+                    setState { copy(fullName = event.fullName) }
+                    validateSignUpFields()
+                }
+            }
+
+            is AuthUiEvent.ConfirmPasswordChanged -> {
+                viewModelScope.launch {
+                    setState { copy(confirmPassword = event.confirmPassword) }
+                    validateSignUpFields()
+                }
+            }
+
+            is AuthUiEvent.GoogleIdTokenFailed -> {
+                viewModelScope.launch {
+                    Timber.tag(TAG).e(event.cause, "Google ID token failed")
+                    setState { copy(isGoogleLoading = false) }
+                    sendSideEffect(AuthUiSideEffect.ShowToast("Could not get Google account. Please try again."))
                 }
             }
 
@@ -60,10 +83,12 @@ class AuthViewModel @Inject constructor(
 
             AuthUiEvent.SignUpWithEmailClicked -> {
                 viewModelScope.launch {
-                    if (currentState().canProceed != AuthEligibilityResult.Eligible) return@launch
+                    validateSignUpFields()
+                    val state = currentState()
+                    if (state.fullNameError != null || state.confirmPasswordError != null) return@launch
+                    if (state.canProceed != AuthEligibilityResult.Eligible) return@launch
 
                     setState { copy(isLoading = true) }
-                    val state = currentState()
 
                     val result = signUpWithEmailUseCase(
                         email = state.email,
@@ -90,6 +115,7 @@ class AuthViewModel @Inject constructor(
 
             AuthUiEvent.SignInWithGoogleClicked -> {
                 viewModelScope.launch {
+                    setState { copy(isGoogleLoading = true) }
                     sendSideEffect(AuthUiSideEffect.GetGoogleSignInToken)
                 }
             }
@@ -98,7 +124,7 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    private suspend fun evaluateEligibility() {
+    private fun evaluateEligibility() {
         val state = currentState()
         val result = authEligibilityUseCase.canProceed(
             email = state.email,
@@ -106,6 +132,27 @@ class AuthViewModel @Inject constructor(
             authFlow = state.authFlow,
         )
         setState { copy(canProceed = result) }
+    }
+
+    private suspend fun validateSignUpFields() {
+        if (currentState().authFlow != AuthFlow.SIGN_UP) return
+        val state = currentState()
+        val fullNameError = when {
+            state.fullName.isBlank() -> "Full name is required"
+            state.fullName.trim().length < 2 -> "Enter at least 2 characters"
+            else -> null
+        }
+        val confirmPasswordError = when {
+            state.confirmPassword.isBlank() -> "Please confirm your password"
+            state.confirmPassword != state.password -> "Passwords don't match"
+            else -> null
+        }
+        setState {
+            copy(
+                fullNameError = fullNameError,
+                confirmPasswordError = confirmPasswordError,
+            )
+        }
     }
 
     private suspend fun handleEmailAuthResult(result: ApiResult<*>) {
@@ -118,39 +165,32 @@ class AuthViewModel @Inject constructor(
             }
 
             is ApiResult.Error -> {
-                sendSideEffect(
-                    AuthUiSideEffect.NotifySignInStateUpdate(
-                        SignInState.Failed(result.cause)
-                    )
-                )
+                Timber.tag(TAG).e(result.cause, "Email auth failed: %s", result.message)
+                sendSideEffect(AuthUiSideEffect.ShowToast(result.message))
             }
         }
     }
 
     private suspend fun signInWithGoogle(idToken: String?) {
         if (idToken == null) {
+            setState { copy(isGoogleLoading = false) }
             sendSideEffect(AuthUiSideEffect.ShowToast("Google sign-in failed"))
             Timber.tag(TAG).e("Google sign-in failed — id token was null")
             return
         }
 
-        setState { copy(isLoading = true) }
-
         when (val result = signInWithGoogleIdTokenUseCase(idToken)) {
             is ApiResult.Success -> {
-                setState { copy(isLoading = false) }
+                setState { copy(isGoogleLoading = false) }
                 sendSideEffect(
                     AuthUiSideEffect.NotifySignInStateUpdate(SignInState.Success)
                 )
             }
 
             is ApiResult.Error -> {
-                setState { copy(isLoading = false) }
-                sendSideEffect(
-                    AuthUiSideEffect.NotifySignInStateUpdate(
-                        SignInState.Failed(result.cause)
-                    )
-                )
+                Timber.tag(TAG).e(result.cause, "Google sign-in failed: %s", result.message)
+                setState { copy(isGoogleLoading = false) }
+                sendSideEffect(AuthUiSideEffect.ShowToast(result.message))
             }
         }
     }
@@ -160,7 +200,10 @@ sealed interface AuthUiEvent {
     data class OnStart(val flow: AuthFlow) : AuthUiEvent
     data class EmailChanged(val email: String) : AuthUiEvent
     data class PasswordChanged(val password: String) : AuthUiEvent
+    data class FullNameChanged(val fullName: String) : AuthUiEvent
+    data class ConfirmPasswordChanged(val confirmPassword: String) : AuthUiEvent
     data class OnGoogleIdTokenReceived(val idToken: String) : AuthUiEvent
+    data class GoogleIdTokenFailed(val cause: Throwable) : AuthUiEvent
 
     data object SignUpWithEmailClicked : AuthUiEvent
     data object SignInWithEmailClicked : AuthUiEvent
@@ -187,9 +230,14 @@ sealed interface SignInState {
 data class AuthUiState(
     val email: String = "",
     val password: String = "",
+    val fullName: String = "",
+    val confirmPassword: String = "",
     val isLoading: Boolean = false,
+    val isGoogleLoading: Boolean = false,
     val canProceed: AuthEligibilityResult = AuthEligibilityResult.Nothing,
     val authFlow: AuthFlow = AuthFlow.SIGN_IN,
+    val fullNameError: String? = null,
+    val confirmPasswordError: String? = null,
 )
 
 

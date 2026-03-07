@@ -27,7 +27,7 @@ class AuthEligibilityUseCase {
 
     private val specialCharRegex = Regex("[^A-Za-z0-9]")
 
-    suspend fun canProceed(
+    fun canProceed(
         email: String,
         password: String,
         authFlow: AuthFlow,

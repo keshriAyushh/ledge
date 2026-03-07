@@ -3,14 +3,26 @@ package com.ayush.auth.presentation
 import android.app.Activity
 import android.widget.Toast
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -35,7 +47,6 @@ import com.ayush.network.domain.usecase.emailError
 import com.ayush.network.domain.usecase.passwordError
 import com.ayush.ui.components.LedgeAuthScaffold
 import com.ayush.ui.components.LedgeDivider
-import com.ayush.ui.components.LedgeErrorText
 import com.ayush.ui.components.LedgeLogo
 import com.ayush.ui.components.LedgePasswordField
 import com.ayush.ui.components.LedgePrimaryButton
@@ -61,14 +72,6 @@ fun SignUpScreen(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var fullName by remember { mutableStateOf("") }
-    var confirmPassword by remember { mutableStateOf("") }
-
-    var fullNameError by remember { mutableStateOf<String?>(null) }
-    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
-
-    var authError by remember { mutableStateOf<String?>(null) }
-
     LaunchedEffect(Unit) {
         viewModel.onEvent(OnStart(AuthFlow.SIGN_UP))
     }
@@ -88,16 +91,19 @@ fun SignUpScreen(
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 AuthUiSideEffect.GetGoogleSignInToken -> {
-                    googleSignInProvider.getIdToken(context as Activity)
+                    val result = googleSignInProvider.getIdToken(context as Activity)
+                    result.fold(
+                        onSuccess = { idToken ->
+                            viewModel.onEvent(AuthUiEvent.OnGoogleIdTokenReceived(idToken))
+                        },
+                        onFailure = { viewModel.onEvent(AuthUiEvent.GoogleIdTokenFailed(it)) }
+                    )
                 }
 
                 is AuthUiSideEffect.NotifySignInStateUpdate -> {
-                    when (val state = effect.signInState) {
+                    when (effect.signInState) {
                         SignInState.Success -> onAuthSuccess()
-                        is SignInState.Failed -> {
-                            authError = state.exception?.message
-                                ?: "Account creation failed. Please try again."
-                        }
+                        is SignInState.Failed -> {}
                     }
                 }
 
@@ -108,49 +114,17 @@ fun SignUpScreen(
         }
     }
 
-    fun validateLocalFields(): Boolean {
-        fullNameError = when {
-            fullName.isBlank() -> "Full name is required"
-            fullName.trim().length < 2 -> "Enter at least 2 characters"
-            else -> null
-        }
-        confirmPasswordError = when {
-            confirmPassword.isBlank() -> "Please confirm your password"
-            confirmPassword != uiState.password -> "Passwords don't match"
-            else -> null
-        }
-        return fullNameError == null && confirmPasswordError == null
-    }
-
     SignUpScreenContent(
         uiState = uiState,
-        fullName = fullName,
-        confirmPassword = confirmPassword,
-        fullNameError = fullNameError,
-        confirmPasswordError = confirmPasswordError,
-        authError = authError,
-        onFullNameChange = { input ->
-            fullName = input
-            fullNameError = null
-        },
-        onEmailChange = { input ->
-            authError = null
-            viewModel.onEvent(AuthUiEvent.EmailChanged(input))
-        },
-        onPasswordChange = { input ->
-            authError = null
-            confirmPasswordError = null
-            viewModel.onEvent(AuthUiEvent.PasswordChanged(input))
-        },
-        onConfirmPasswordChange = { input ->
-            confirmPassword = input
-            confirmPasswordError = null
-        },
-        onSubmit = {
-            if (validateLocalFields()) {
-                viewModel.onEvent(AuthUiEvent.SignUpWithEmailClicked)
-            }
-        },
+        fullName = uiState.fullName,
+        confirmPassword = uiState.confirmPassword,
+        fullNameError = uiState.fullNameError,
+        confirmPasswordError = uiState.confirmPasswordError,
+        onFullNameChange = { viewModel.onEvent(AuthUiEvent.FullNameChanged(it)) },
+        onEmailChange = { viewModel.onEvent(AuthUiEvent.EmailChanged(it)) },
+        onPasswordChange = { viewModel.onEvent(AuthUiEvent.PasswordChanged(it)) },
+        onConfirmPasswordChange = { viewModel.onEvent(AuthUiEvent.ConfirmPasswordChanged(it)) },
+        onSubmit = { viewModel.onEvent(AuthUiEvent.SignUpWithEmailClicked) },
         onNavigateToSignIn = onNavigateToSignIn,
         onGoogleClicked = { viewModel.onEvent(AuthUiEvent.SignInWithGoogleClicked) },
     )
@@ -163,7 +137,6 @@ internal fun SignUpScreenContent(
     confirmPassword: String,
     fullNameError: String?,
     confirmPasswordError: String?,
-    authError: String?,
     onFullNameChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -183,6 +156,9 @@ internal fun SignUpScreenContent(
 
     val ctaEnabled = uiState.canProceed == AuthEligibilityResult.Eligible
             && !uiState.isLoading
+            && !uiState.isGoogleLoading
+            && fullNameError == null
+            && confirmPasswordError == null
 
     val passwordStrength by remember(uiState.password) {
         derivedStateOf { computePasswordStrength(uiState.password) }
@@ -285,14 +261,6 @@ internal fun SignUpScreenContent(
             modifier = Modifier.focusRequester(confirmFocus),
         )
 
-        if (authError != null) {
-            Spacer(Modifier.height(8.dp))
-            LedgeErrorText(
-                message = authError,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-
         Spacer(Modifier.height(24.dp))
 
         LedgePrimaryButton(
@@ -312,6 +280,7 @@ internal fun SignUpScreenContent(
             iconPainter = painterResource(com.ayush.ui.R.drawable.ic_google),
             label = "Sign up with Google",
             onClick = onGoogleClicked,
+            isLoading = uiState.isGoogleLoading,
         )
 
         Spacer(Modifier.height(28.dp))
@@ -400,7 +369,6 @@ private fun SignUpDefaultPreview() {
             confirmPassword = "",
             fullNameError = null,
             confirmPasswordError = null,
-            authError = null,
             onFullNameChange = {},
             onEmailChange = {},
             onPasswordChange = {},
@@ -427,7 +395,6 @@ private fun SignUpEligiblePreview() {
             confirmPassword = "Str0ng!Pass",
             fullNameError = null,
             confirmPasswordError = null,
-            authError = null,
             onFullNameChange = {},
             onEmailChange = {},
             onPasswordChange = {},
@@ -455,7 +422,6 @@ private fun SignUpLoadingPreview() {
             confirmPassword = "Str0ng!Pass",
             fullNameError = null,
             confirmPasswordError = null,
-            authError = null,
             onFullNameChange = {},
             onEmailChange = {},
             onPasswordChange = {},
@@ -477,7 +443,6 @@ private fun SignUpLocalErrorPreview() {
             confirmPassword = "mismatch",
             fullNameError = "Enter at least 2 characters",
             confirmPasswordError = "Passwords don't match",
-            authError = null,
             onFullNameChange = {},
             onEmailChange = {},
             onPasswordChange = {},
@@ -506,7 +471,6 @@ private fun SignUpPasswordPolicyPreview() {
             confirmPassword = "weakpass",
             fullNameError = null,
             confirmPasswordError = null,
-            authError = null,
             onFullNameChange = {},
             onEmailChange = {},
             onPasswordChange = {},

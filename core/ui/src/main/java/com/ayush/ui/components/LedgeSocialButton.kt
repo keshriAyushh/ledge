@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -32,10 +33,11 @@ fun LedgeSocialButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    isLoading: Boolean = false,
 ) {
     OutlinedButton(
         onClick = onClick,
-        enabled = enabled,
+        enabled = enabled && !isLoading,
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp),
@@ -46,21 +48,29 @@ fun LedgeSocialButton(
         ),
         border = androidx.compose.foundation.BorderStroke(1.dp, BorderSubtle),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
-        ) {
-            Icon(
-                painter = iconPainter,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = Color.Unspecified,
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                color = TextPrimary,
+                strokeWidth = 2.dp,
             )
-            Spacer(Modifier.width(12.dp))
-            Text(
-                text = label,
-                style = LedgeTextStyle.Button.copy(fontSize = 14.sp),
-            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                Icon(
+                    painter = iconPainter,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = Color.Unspecified,
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(
+                    text = label,
+                    style = LedgeTextStyle.Button.copy(fontSize = 14.sp),
+                )
+            }
         }
     }
 }

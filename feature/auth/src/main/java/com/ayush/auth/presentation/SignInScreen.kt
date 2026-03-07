@@ -16,9 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -41,7 +39,6 @@ import com.ayush.network.domain.usecase.emailError
 import com.ayush.network.domain.usecase.passwordError
 import com.ayush.ui.components.LedgeAuthScaffold
 import com.ayush.ui.components.LedgeDivider
-import com.ayush.ui.components.LedgeErrorText
 import com.ayush.ui.components.LedgeLogo
 import com.ayush.ui.components.LedgePasswordField
 import com.ayush.ui.components.LedgePrimaryButton
@@ -63,7 +60,6 @@ fun SignInScreen(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var authError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         viewModel.onEvent(AuthUiEvent.OnStart(AuthFlow.SIGN_IN))
@@ -84,16 +80,19 @@ fun SignInScreen(
         viewModel.sideEffect.collect { effect ->
             when (effect) {
                 AuthUiSideEffect.GetGoogleSignInToken -> {
-                    googleSignInProvider.getIdToken(activity = context as Activity)
+                    val result = googleSignInProvider.getIdToken(activity = context as Activity)
+                    result.fold(
+                        onSuccess = { idToken ->
+                            viewModel.onEvent(AuthUiEvent.OnGoogleIdTokenReceived(idToken))
+                        },
+                        onFailure = { viewModel.onEvent(AuthUiEvent.GoogleIdTokenFailed(it)) }
+                    )
                 }
 
                 is AuthUiSideEffect.NotifySignInStateUpdate -> {
-                    when (val state = effect.signInState) {
+                    when (effect.signInState) {
                         SignInState.Success -> onAuthSuccess()
-                        is SignInState.Failed -> {
-                            authError = state.exception?.message
-                                ?: "Sign-in failed. Please try again."
-                        }
+                        is SignInState.Failed -> {}
                     }
                 }
 
@@ -106,15 +105,8 @@ fun SignInScreen(
 
     SignInScreenContent(
         uiState = uiState,
-        authError = authError,
-        onEmailChange = { input ->
-            authError = null
-            viewModel.onEvent(AuthUiEvent.EmailChanged(input))
-        },
-        onPasswordChange = { input ->
-            authError = null
-            viewModel.onEvent(AuthUiEvent.PasswordChanged(input))
-        },
+        onEmailChange = { viewModel.onEvent(AuthUiEvent.EmailChanged(it)) },
+        onPasswordChange = { viewModel.onEvent(AuthUiEvent.PasswordChanged(it)) },
         onSubmit = { viewModel.onEvent(AuthUiEvent.SignInWithEmailClicked) },
         onForgotPassword = onForgotPassword,
         onNavigateToSignUp = onNavigateToSignUp,
@@ -126,7 +118,6 @@ fun SignInScreen(
 @Composable
 internal fun SignInScreenContent(
     uiState: AuthUiState,
-    authError: String?,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onSubmit: () -> Unit,
@@ -142,6 +133,7 @@ internal fun SignInScreenContent(
     val passwordFieldError = uiState.canProceed.passwordError()
     val ctaEnabled = uiState.canProceed == AuthEligibilityResult.Eligible
             && !uiState.isLoading
+            && !uiState.isGoogleLoading
 
     LedgeAuthScaffold(modifier = modifier) {
 
@@ -199,14 +191,6 @@ internal fun SignInScreenContent(
             modifier = Modifier.focusRequester(passwordFocus),
         )
 
-        if (authError != null) {
-            Spacer(Modifier.height(8.dp))
-            LedgeErrorText(
-                message = authError,
-                modifier = Modifier.padding(start = 4.dp),
-            )
-        }
-
         Spacer(Modifier.height(12.dp))
         Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
             LedgeTextLink(
@@ -234,6 +218,7 @@ internal fun SignInScreenContent(
             iconPainter = painterResource(com.ayush.ui.R.drawable.ic_google),
             label = "Continue with Google",
             onClick = onGoogleClicked,
+            isLoading = uiState.isGoogleLoading,
         )
 
         Spacer(Modifier.weight(1f))
@@ -263,7 +248,6 @@ private fun SignInDefaultPreview() {
     LedgeTheme {
         SignInScreenContent(
             uiState = AuthUiState(),
-            authError = null,
             onEmailChange = {},
             onPasswordChange = {},
             onSubmit = {},
@@ -284,7 +268,6 @@ private fun SignInEligiblePreview() {
                 password = "hunter2",
                 canProceed = AuthEligibilityResult.Eligible,
             ),
-            authError = null,
             onEmailChange = {},
             onPasswordChange = {},
             onSubmit = {},
@@ -306,24 +289,6 @@ private fun SignInLoadingPreview() {
                 isLoading = true,
                 canProceed = AuthEligibilityResult.Eligible,
             ),
-            authError = null,
-            onEmailChange = {},
-            onPasswordChange = {},
-            onSubmit = {},
-            onForgotPassword = {},
-            onNavigateToSignUp = {},
-            onGoogleClicked = {},
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFF080A0F, name = "Auth error")
-@Composable
-private fun SignInAuthErrorPreview() {
-    LedgeTheme {
-        SignInScreenContent(
-            uiState = AuthUiState(),
-            authError = "Incorrect email or password. Please try again.",
             onEmailChange = {},
             onPasswordChange = {},
             onSubmit = {},
@@ -344,7 +309,6 @@ private fun SignInEmailErrorPreview() {
                 password = "",
                 canProceed = AuthEligibilityResult.Error("Invalid email format"),
             ),
-            authError = null,
             onEmailChange = {},
             onPasswordChange = {},
             onSubmit = {},

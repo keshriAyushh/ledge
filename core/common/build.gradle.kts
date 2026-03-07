@@ -27,6 +27,7 @@ android {
 
 dependencies {
     api(libs.androidx.core.ktx)
+    api(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     api(libs.timber)
