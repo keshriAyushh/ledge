@@ -92,6 +92,7 @@ class AuthViewModel @Inject constructor(
 
                     val result = signUpWithEmailUseCase(
                         email = state.email,
+                        name = state.fullName.trim(),
                         password = state.password,
                     )
                     handleEmailAuthResult(result)
