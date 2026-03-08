@@ -1,4 +1,4 @@
-package com.ayush.network.domain.usecase
+package com.ayush.auth.domain.usecase
 
 enum class AuthFlow { SIGN_IN, SIGN_UP }
 

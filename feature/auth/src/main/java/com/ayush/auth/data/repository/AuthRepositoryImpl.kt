@@ -1,8 +1,7 @@
-package com.ayush.network.data.repository
+package com.ayush.auth.data.repository
 
 import com.ayush.common.models.User
 import com.ayush.common.result.ApiResult
-import com.ayush.network.domain.repository.AuthRepository
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.Google
@@ -74,9 +73,6 @@ class AuthRepositoryImpl @Inject constructor(
                     avatarUrl = metadata?.get("avatar_url")?.toString()?.trim('"')?.takeIf { it != "null" },
                     isEmailVerified = currentUser.emailConfirmedAt != null
                 )
-            } ?: run {
-                // fetch from db. if null there as well, return null finally
-                null
             }
         }
     }
@@ -96,7 +92,6 @@ class AuthRepositoryImpl @Inject constructor(
         )
     }
 
-
     override suspend fun resetPasswordForEmail(email: String): ApiResult<Unit> = withContext(Dispatchers.IO) {
         runCatching {
             supabaseClient.auth.resetPasswordForEmail(email, redirectUrl = REDIRECT_URL)
@@ -104,9 +99,5 @@ class AuthRepositoryImpl @Inject constructor(
             onSuccess = { ApiResult.Success(Unit) },
             onFailure = { ApiResult.Error(it.message ?: "Password reset failed", it) }
         )
-    }
-
-    override suspend fun signOut() {
-        withContext(Dispatchers.IO) { supabaseClient.auth.signOut() }
     }
 }

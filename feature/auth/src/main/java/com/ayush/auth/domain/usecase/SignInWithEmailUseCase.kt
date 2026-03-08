@@ -1,8 +1,8 @@
-package com.ayush.network.domain.usecase
+package com.ayush.auth.domain.usecase
 
+import com.ayush.auth.data.repository.AuthRepository
 import com.ayush.common.models.User
 import com.ayush.common.result.ApiResult
-import com.ayush.network.domain.repository.AuthRepository
 import javax.inject.Inject
 
 class SignInWithEmailUseCase @Inject constructor(

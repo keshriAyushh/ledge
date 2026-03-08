@@ -1,12 +1,15 @@
 package com.ayush.network.domain.usecase
 
-import com.ayush.network.domain.repository.AuthRepository
+import io.github.jan.supabase.SupabaseClient
+import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 class SignOutUseCase @Inject constructor(
-    private val authRepository: AuthRepository
+    private val supabaseClient: SupabaseClient
 ) {
     suspend operator fun invoke() {
-        authRepository.signOut()
+        withContext(Dispatchers.IO) { supabaseClient.auth.signOut() }
     }
 }

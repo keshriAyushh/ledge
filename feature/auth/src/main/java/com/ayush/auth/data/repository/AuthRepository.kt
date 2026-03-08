@@ -1,4 +1,4 @@
-package com.ayush.network.domain.repository
+package com.ayush.auth.data.repository
 
 import com.ayush.common.models.User
 import com.ayush.common.result.ApiResult
@@ -10,5 +10,4 @@ interface AuthRepository {
     suspend fun signUpWithEmail(email: String, password: String, name: String): ApiResult<User>
     suspend fun getCurrentUser(): User?
     suspend fun resetPasswordForEmail(email: String): ApiResult<Unit>
-    suspend fun signOut()
 }

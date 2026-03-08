@@ -1,6 +1,6 @@
-package com.ayush.network.domain.usecase
+package com.ayush.auth.domain.usecase
 
-import com.ayush.network.domain.repository.AuthRepository
+import com.ayush.auth.data.repository.AuthRepository
 import javax.inject.Inject
 
 class ResetPasswordUseCase @Inject constructor(
