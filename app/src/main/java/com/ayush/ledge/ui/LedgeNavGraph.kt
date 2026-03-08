@@ -29,7 +29,7 @@ internal fun LedgeNavGraph(
     }
 
     val startDestination: LedgeRoute = when (authState) {
-        AuthState.Authenticated -> MainRoute.MainScreen
+        AuthState.Authenticated -> MainRoute.Dashboard
         else -> AuthRoute.Auth
     }
 
@@ -40,7 +40,7 @@ internal fun LedgeNavGraph(
             AuthState.Authenticated -> {
                 if (backStack.lastOrNull() !is MainRoute) {
                     backStack.clear()
-                    backStack.add(MainRoute.MainScreen)
+                    backStack.add(MainRoute.Dashboard)
                 }
             }
 
@@ -62,12 +62,12 @@ internal fun LedgeNavGraph(
                 AuthNavGraph(
                     onAuthSuccess = {
                         backStack.clear()
-                        backStack.add(MainRoute.MainScreen)
+                        backStack.add(MainRoute.Dashboard)
                     },
                 )
             }
 
-            entry<MainRoute.MainScreen> {
+            entry<MainRoute.Dashboard> {
                 MainNavGraph(
                     onSignOut = {
                         backStack.clear()

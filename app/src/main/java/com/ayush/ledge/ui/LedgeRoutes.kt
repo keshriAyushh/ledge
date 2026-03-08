@@ -7,13 +7,16 @@ sealed interface LedgeRoute : NavKey
 
 sealed interface AuthRoute : LedgeRoute {
     @Serializable data object Auth : AuthRoute
+
     @Serializable data object SignIn : AuthRoute
     @Serializable data object SignUp : AuthRoute
     @Serializable data object ForgotPassword : AuthRoute
 }
 
 sealed interface MainRoute : LedgeRoute {
-    @Serializable data object MainScreen : MainRoute
+    @Serializable
+    data object Dashboard : MainRoute
+
     @Serializable
     data object Home : MainRoute
     @Serializable
